@@ -18,6 +18,7 @@ package ghidra.app.util.bin.format.ne;
 import java.io.IOException;
 
 import ghidra.app.util.bin.BinaryReader;
+import ghidra.program.database.mem.FileBytes;
 import ghidra.util.Conv;
 
 /**
@@ -35,6 +36,7 @@ public class Resource {
 
 	private BinaryReader reader;
 	private ResourceTable rt;
+	private long readerLength;
 	private short fileOffset; //this value must be shifted
 	private short fileLength; //this value must be shifted
 	private short flagword;
@@ -45,6 +47,7 @@ public class Resource {
 	Resource(BinaryReader reader, ResourceTable rt) throws IOException {
 		this.reader = reader;
 		this.rt = rt;
+		this.readerLength = Math.toIntExact(reader.length());
 		fileOffset = reader.readNextShort();
 		fileLength = reader.readNextShort();
 		flagword = reader.readNextShort();
@@ -144,7 +147,15 @@ public class Resource {
 	public int getFileLengthShifted() {
 		int shift_int = Conv.shortToInt(rt.getAlignmentShiftCount());
 		int length_int = Conv.shortToInt(fileLength);
-		return length_int << shift_int;
+		int length = length_int << shift_int;
+		int offset = getFileOffsetShifted();
+		int required_length = length + offset;
+		
+		if (required_length > readerLength) {
+			length -= required_length - readerLength;
+		}
+
+		return length;
 	}
 
 	/**
